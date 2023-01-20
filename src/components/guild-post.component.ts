@@ -26,12 +26,17 @@ export default class GuildPostComponent extends HTMLElement {
     shadow.appendChild(template.content.cloneNode(true))
     const postDetailInsert = this.shadowRoot?.getElementById('post-details-insert')
     const generatedDetails = this.generatePostDetail();
-    generatedDetails.reverse().forEach(pdeets => postDetailInsert?.after(pdeets))
+    postDetailInsert?.after(generatedDetails)
     // this.shadowRoot?.appendChild(template.content.cloneNode(true));
   }
   generatePostDetail() {
     const randomNumber = Math.ceil(Math.random() * 10);
-    return Array(randomNumber).fill(1).map(() => this.getPostDetailTemplate().content.cloneNode(true))
+    const str = 'Post details lorem ipsum dolor stuff that are really long'
+    const paragraph = Array(randomNumber).fill(str).join(' ')
+    const detail = document.createTextNode(paragraph)
+    const pEl = document.createElement('p')
+    pEl.appendChild(detail)
+    return pEl
   }
   getPostDetailTemplate(): HTMLTemplateElement {
     return this.shadowRoot?.getElementById('post-detail-template') as HTMLTemplateElement;
