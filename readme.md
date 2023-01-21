@@ -5,3 +5,6 @@
   1,5,9,2,6,10,3,7,4,8
   for 4 columns
 * center board so there is no spaces between posts horizontally other than gap
+* generate sample posts from data
+
+* cleanup
