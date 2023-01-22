@@ -13,10 +13,10 @@ const css = `
 const template = createHtmlTemplateWithStyles(html, [tailwindcss, css]);
 
 const debounce = (fn: (...args: any) => void, ms: number) => {
-  let timeout: number;
+  let timeout: number | undefined = undefined;
   return (...args: any) => {
-    clearTimeout(timeout)
-    setTimeout(fn.bind(null, ...args), ms);
+    if (timeout != null) {clearTimeout(timeout)}
+    timeout = setTimeout(fn.bind(null, ...args), ms);
   }
 }
 
@@ -25,6 +25,7 @@ const getRemPixels = (rem: number) => rem * parseFloat(getComputedStyle(document
 export default class GuildPageComponent extends HTMLElement {
   postData?: GuildPost[]
   postElements?: GuildPostComponent[]
+  currentColumnCount: number | undefined;
   constructor() {
     super();
     const shadow = this.attachShadow({mode: 'open'});
@@ -32,26 +33,26 @@ export default class GuildPageComponent extends HTMLElement {
     this.postData = this.getPostsData()
     this.postElements = this.postData.map(this.makePostElement)
 
-    this.postElements.forEach(el => this.getBoard()?.appendChild(el))
+    this.postElements.forEach(el => this.getBoard?.appendChild(el))
     // check for leak. eg: going to a new page, elements now destroyed, see memory
     // reduced calls but still have unnecessary calls. log inside to see
-    const debouncedSetHeight = debounce(this.setupBoardProperties, 150)
-    this.postElements.forEach(el => new ResizeObserver(debouncedSetHeight).observe(el))
-    window.addEventListener('resize', debouncedSetHeight)
+    const debouncedSetupBoard = debounce(this.setupBoardProperties, 150)
+    this.postElements.forEach(el => new ResizeObserver(debouncedSetupBoard).observe(el))
+    // new ResizeObserver(debouncedSetupBoard).observe(this.getBoard!)
+    window.addEventListener('resize', debouncedSetupBoard)
   }
 
-  determineTotalheight = (columns: number) => {
-    return (this.getPostElements().reduce((acc, curr) => acc + curr.offsetHeight, 0) / columns) * 1.3
+  private getColumnsThatWillFit = (postWidth: number) => {
+    return Math.floor((this.getBoard!.offsetWidth - getRemPixels(1.5)) / (postWidth + getRemPixels(.75)))
   }
 
-  getColumnsThatWillFit = (postWidth: number) => {
-    return Math.floor((window.innerWidth - getRemPixels(1.5)) / (postWidth + getRemPixels(.75)))
-  }
-
-  setupBoardProperties = () => {
+  private setupBoardProperties = () => {
+    const gap = getRemPixels(.75)
     // reorder elements
-    const postWidth = this.getPostElements()?.[0].offsetWidth
+    const postWidth = this.getPostElements?.[0].offsetWidth
     const columnCount = this.getColumnsThatWillFit(postWidth)
+    if (this.currentColumnCount === columnCount) { return }
+    this.currentColumnCount = columnCount
     if(!this.postElements) { return }
     const columns = this.postElements.reduce((acc, el, i) => {
       const columnToPutIn = i % columnCount
@@ -63,68 +64,66 @@ export default class GuildPageComponent extends HTMLElement {
     }, [] as GuildPostComponent[][])
     // determine height of longest column
     const maxRows = Math.max(...columns.map(column => column.length))
-    const maxHeight = Math.max(...columns.map(els => els.reduce((acc, curr) => acc + curr.offsetHeight ,0))) + ((maxRows + 1) * getRemPixels(.75))
+    const postHeights = columns.map(els => els.reduce((acc, curr) => acc + curr.offsetHeight ,0))
+    const maxHeight = Math.max(...postHeights)
+    const maxHeightWithSpace = maxHeight + ((maxRows + 1) * gap);
+    const columnHeightDeficits = columns.map((_column, i) => maxHeight === postHeights[i] ? 0 : maxHeight - postHeights[i])
+    const columnsWithFillers = columns.map((column, i): (GuildPostComponent | HTMLDivElement)[] => {
+      if (columnHeightDeficits[i]) {
+        const div = this.makeFillerDiv(Math.floor(columnHeightDeficits[i] - gap) + 'px');
+        return [...column, div]
+      } else {return column}
+      
+    })
     // set height
-    const board = this.getBoard()
+    const board = this.getBoard
     if (board) {
-      board.setAttribute('board-height', maxHeight.toString())
+      board.setAttribute('board-height', maxHeightWithSpace.toString())
     }
-    // add elements in custom order
-    const listedColumn = columns.reduce((acc, curr) => acc.concat(curr),[])
-    listedColumn.forEach(el => this.getBoard()?.appendChild(el))
+    // clear board and add elements in custom order to board
+    while (board?.firstChild) {
+      board.removeChild(board.lastChild!)
+    }
+    const listedColumn = columnsWithFillers.reduce((acc, curr) => acc.concat(curr),[])
+    listedColumn.forEach(el => this.getBoard?.appendChild(el))
   }
 
-  setBoardContainerHeight = () => {
-    const columns = Math.floor((window.innerWidth - getRemPixels(1.5)) / (this.getPostElements()?.[0].offsetWidth + getRemPixels(.75 / 2)))
-    const boardHeight = this.determineTotalheight(columns)
-    const board = this.getBoard()
-    if (board) {
-      board.setAttribute('board-height', boardHeight.toString())
-    }
+  private get getBoard() {
+    return this.shadowRoot?.getElementById('board')
   }
 
-  getBoard = () => this.shadowRoot?.getElementById('board')
+  private get getPostElements(): GuildPostComponent[] {
+    return Array.prototype.slice.call(this.getBoard?.getElementsByTagName('app-guild-post'))
+  }
 
-  getPostElements = (): GuildPostComponent[] => Array.prototype.slice.call(this.getBoard()?.getElementsByTagName('app-guild-post'))
-
-  makePostElement = (guildPost: GuildPost): GuildPostComponent => {
+  private makePostElement = (guildPost: GuildPost): GuildPostComponent => {
     const guildPostComp: GuildPostComponent = document.createElement('app-guild-post') as GuildPostComponent
     guildPostComp.setAttribute('post-title', guildPost.title)
     guildPostComp.setAttribute('post-details', guildPost.details)
     return guildPostComp
   }
 
-  getPostsData = (): GuildPost[] => {
-    return Array(20).fill(1).map((_x, i): GuildPost => ({
+  // could move to a ts for getting post inf
+  private getPostsData = (): GuildPost[] => {
+    return Array(63).fill(1).map((_x, i): GuildPost => ({
       id: i,
       title: `#${i} Post title`,
       details: this.generatePostDetail()
     }))
   }
 
-  generatePostDetail = (): string => {
-    const randomNumber = Math.ceil(Math.random() * 10)
-    const str = 'Post details lorem ipsum dolor stuff that are really long'
+  // could move to a ts for getting post info
+  private generatePostDetail = (): string => {
+    const randomNumber = Math.ceil(Math.random() * 10 / 2)
+    const str = 'Po details lorem ipsum dolor of that are really long'
     const paragraph = Array(randomNumber).fill(str).join(' ')
     return paragraph
   }
 
-  reorderElements(columns: number, postElements: GuildPostComponent[]): GuildPostComponent[] {
-    return postElements?.reduce((acc, curr, index, arr) => {
-      const newIndex = this.mapIndexPivoted(columns, arr.length, index)
-      acc[newIndex] = curr
-      return acc
-    }, new Array(postElements.length))
-  }
-
-  getRows = (columns: number, length: number) =>Math.ceil(length / columns);
-  getRowIndex = (columns: number, index: number) => Math.floor(index / columns)
-  getColumnIndex = (columns: number, index: number) => index % columns
-  mapIndexPivoted = (columns: number, length: number, i: number) => {
-    const rows = this.getRows(columns, length);
-    const rowOffset = this.getRowIndex(columns, i) * rows;
-    const colOffset = (this.getColumnIndex(columns, i) % columns) * rows;
-    return rowOffset + colOffset;
+  private makeFillerDiv = (height: string) => {
+    const div = document.createElement('div')
+    div.style.height = height
+    return div
   }
 }
 customElements.define('app-guild-page', GuildPageComponent);

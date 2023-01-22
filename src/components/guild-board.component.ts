@@ -1,9 +1,8 @@
 import { createHtmlTemplateWithStyles } from '../utils/custom-elements.util';
 import tailwindcss from '../tailwind.css';
-// import css from './todo-item.css';
-// import html from './todo-item.html';
+
 const html = `
-<div class="flex flex-col flex-wrap content-center gap-3 p-3 bg-gray-800 mx-auto" id="container">
+<div class="overflow-hidden bg-gray-800 flex flex-col flex-wrap content-center gap-3 p-3 mx-auto" id="container">
     <slot id="slot"></slot>
 </div>
 `
