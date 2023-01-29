@@ -8,3 +8,8 @@
 * generate sample posts from data
 
 * cleanup
+
+
+* v2 using grid
+* create file for getting data
+* loading guild post

@@ -26,7 +26,7 @@ const css = `
 const template = createHtmlTemplateWithStyles(html, [tailwindcss, css]);
 
 export default class GuildPostComponent extends HTMLElement {
-  static get observedAttributes() { return ['post-title', 'post-details']; }
+  static get observedAttributes() { return ['post-title', 'post-details', 'post-loading']; }
   constructor() {
     super();
     const shadow = this.attachShadow({mode: 'open'})
@@ -36,7 +36,12 @@ export default class GuildPostComponent extends HTMLElement {
     if (oldValue !== newValue) {
       if(name === 'post-title' && this.postTitle) { this.postTitle.innerHTML = newValue}
       if(name === 'post-details' && this.postDetails) { this.postDetails.innerHTML = newValue}
+      if(name === 'post-loading') {  }
     }
+  }
+
+  setupPostToLoading = () => {
+    this.postTitle
   }
   
   get postTitle () { return this.shadowRoot?.getElementById('post-title')}

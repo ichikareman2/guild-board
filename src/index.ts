@@ -1,3 +1,5 @@
 import './components/guild-page.component'
 import './components/guild-board.component'
+import './components/guild-page-v2.component'
+import './components/guild-board-v2.component'
 import './components/guild-post.component'

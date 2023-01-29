@@ -2,6 +2,8 @@ import { createHtmlTemplateWithStyles } from '../utils/custom-elements.util';
 import tailwindcss from '../tailwind.css';
 import { GuildPost } from '../models/guild-post.model';
 import GuildPostComponent from './guild-post.component';
+import { debounce } from '../utils/debounce.util';
+import { getRemPixels } from '../utils/units.util';
 
 const html = `
 <app-guild-board id="board">
@@ -11,16 +13,6 @@ const css = `
 
 `
 const template = createHtmlTemplateWithStyles(html, [tailwindcss, css]);
-
-const debounce = (fn: (...args: any) => void, ms: number) => {
-  let timeout: number | undefined = undefined;
-  return (...args: any) => {
-    if (timeout != null) {clearTimeout(timeout)}
-    timeout = setTimeout(fn.bind(null, ...args), ms);
-  }
-}
-
-const getRemPixels = (rem: number) => rem * parseFloat(getComputedStyle(document.documentElement).fontSize)
 
 export default class GuildPageComponent extends HTMLElement {
   postData?: GuildPost[]
