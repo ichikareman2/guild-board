@@ -6,8 +6,10 @@ import * as O from 'fp-ts/Option'
 import { pipe, tuple } from 'fp-ts/function'
 import { match } from "fp-ts/lib/EitherT";
 import { countTo } from "../utils/array.util";
+import { withOption } from "../utils/option.util";
 
 const rowUnits = 10;
+const postWidth = 264;
 
 const gridColStartVar = '--grid-col-start'
 const gridColEndVar = '--grid-col-end'
@@ -18,12 +20,12 @@ const columnCountVar = '--grid-column-count'
 const rowCountVar = '--grid-row-count'
 
 const html = `
-<div class="grid mx-auto w-fit" id="container">
+<div class="bg-gray-800 gap-0.5" id="container">
 
 </div>
 `
 const css = `
-.#container {
+#container {
   grid-template-rows: repeat(var(${rowCountVar}, 1), ${rowUnits}px);
   grid-template-columns: repeat(var(${columnCountVar}, 1), 1fr);
 }
@@ -73,18 +75,9 @@ export default class GuildBoardV2Component extends HTMLElement {
       })
     )
 
-    setTimeout(() => {
-      // determine columns
+    /**
+     * // determine columns
       // set columns
-      const columnCountOption = pipe(
-        this.postElements,
-        (postElements) => postElements?.length ? O.some(postElements) : O.none,
-        O.map(postElements => postElements[0].offsetWidth),
-        O.map(this.getColumnsThatWillFit),
-      )
-      if (O.isSome(containerOption) && O.isSome(columnCountOption)) {
-        containerOption.value.style.setProperty(columnCountVar, columnCountOption.value.toString())
-      }
       // virtual grid where order is order of adding it to grid data
         // create array
         // foreach post
@@ -93,8 +86,17 @@ export default class GuildBoardV2Component extends HTMLElement {
           // add current post to column
           // set style css var
         // set total row count
+     */
+    requestAnimationFrame(() => {
+      const columnCountOption = pipe(
+        O.some(this.getColumnsThatWillFit(postWidth))
+      )
+      if (O.isSome(containerOption) && O.isSome(columnCountOption)) {
+        containerOption.value.style.setProperty(columnCountVar, columnCountOption.value.toString())
+      }
       pipe(
         columnCountOption,
+        // O.chain(withOption(guildPostByPostOption)),
         O.chain(columnCount => {
           if(O.isSome(guildPostByPostOption) && O.isSome(containerOption)) {
             return O.some(tuple(containerOption.value, columnCount, guildPostByPostOption.value))
@@ -104,22 +106,30 @@ export default class GuildBoardV2Component extends HTMLElement {
           const getHeight = (column: GuildPostComponent[]) => column.reduce((acc, post) => acc + post.offsetHeight, 0)
           let grid = countTo(columnCount - 1).map(() => [] as GuildPostComponent[])
           guildPostByPost.forEach(guildPost => {
-            const indexOfShortestColumn = grid.reduce((acc, column, i) => acc < getHeight(column) ? acc : i, -1)
+            const indexOfShortestColumn = grid.reduce((acc, column, i) => getHeight(grid[acc]) <= getHeight(column) ? acc : i, 0)
             grid.splice(indexOfShortestColumn, 1, [...grid[indexOfShortestColumn], guildPost])
           })
           const maxHeight = Math.max(...grid.map(getHeight))
-          container.style.setProperty(rowCountVar, Math.ceil(maxHeight / rowUnits).toString())
+          
           grid.forEach((column, columnIndex) => {
             column.forEach((post, rowIndex) => {
-              post.style.setProperty(gridColStartVar, (columnIndex + 1).toString())
+              console.log(post)
               // todo turn to scan to collect last total height?
-              const rowStart = Math.ceil(getHeight(column.slice(0, rowIndex)) / rowUnits)
-              const rowEnd = Math.ceil(post.offsetHeight / rowUnits) / rowUnits
+              const columnHeight = getHeight(column.slice(0, rowIndex))
+              const rowStart = Math.ceil(columnHeight / rowUnits)
+              const rowEnd = Math.ceil(post.offsetHeight / rowUnits)
+
+              post.classList.add('post-position')
+              post.style.setProperty(gridColStartVar, (columnIndex + 1).toString())
+              post.style.setProperty(gridColEndVar, 'span 1')
               post.style.setProperty(gridRowStartVar, rowStart.toString())
-              post.style.setProperty(gridRowStartVar, rowEnd.toString())
+              post.style.setProperty(gridRowEndVar, `span ${rowEnd - 1}`)
             })
           })
 
+          // container.classList.remove('flex', 'items-start')
+          container.style.setProperty('display','grid')
+          container.style.setProperty(rowCountVar, Math.ceil(maxHeight / rowUnits).toString())
 
           return O.some(tuple(columnCount, guildPostByPost))
         })
