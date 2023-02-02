@@ -6,7 +6,7 @@ import * as O from 'fp-ts/Option'
 import { pipe, tuple } from 'fp-ts/function'
 import { match } from "fp-ts/lib/EitherT";
 import { countTo } from "../utils/array.util";
-import { withOption } from "../utils/option.util";
+import { withOptions } from "../utils/option.util";
 
 const rowUnits = 10;
 const postWidth = 264;
@@ -49,7 +49,7 @@ export default class GuildBoardV2Component extends HTMLElement {
     
     // generate posts & add
     const container = this.container
-    const containerOption = container ? O.some(container) : O.none
+    const containerOption: O.Option<HTMLElement> = container ? O.some(container) : O.none
 
 
     const guildPostByPostOption = pipe(
@@ -96,13 +96,8 @@ export default class GuildBoardV2Component extends HTMLElement {
       }
       pipe(
         columnCountOption,
-        // O.chain(withOption(guildPostByPostOption)),
-        O.chain(columnCount => {
-          if(O.isSome(guildPostByPostOption) && O.isSome(containerOption)) {
-            return O.some(tuple(containerOption.value, columnCount, guildPostByPostOption.value))
-          } else { return O.none }
-        }),
-        O.chainFirst(([container, columnCount, guildPostByPost]) => {
+        O.chain(withOptions([containerOption, guildPostByPostOption])),
+        O.chainFirst(([columnCount, container, guildPostByPost]: [number, HTMLElement, Map<GuildPost, GuildPostComponent>]) => {
           const getHeight = (column: GuildPostComponent[]) => column.reduce((acc, post) => acc + post.offsetHeight, 0)
           let grid = countTo(columnCount - 1).map(() => [] as GuildPostComponent[])
           guildPostByPost.forEach(guildPost => {
